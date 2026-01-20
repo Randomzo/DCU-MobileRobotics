@@ -8,7 +8,7 @@ int threshold = 1000;               // <1000 = white (line), >1000 = black (back
 int motor1PWM   = 37;
 int motor1Phase = 38;
 int motor2PWM   = 39;
-int motor2Phase = 2;
+int motor2Phase = 20;
 
 
 // ---------- Tuning ----------
