@@ -2,12 +2,12 @@
 #include <WiFi.h>
 
 // ===================== WIFI / SERVER =====================
-const char* ssid     = "inteernet name here";
-const char* password = "password here";
+const char* ssid     = "ssid";
+const char* password = "internet password";
 
 static const char* apiHost = "3.250.38.184";
 static const int   apiPort = 8000;
-static const char* TEAM_ID = "team name here";
+static const char* TEAM_ID = "team id";
 
 WiFiClient client;
 static const uint32_t HTTP_TIMEOUT_MS = 10000;
@@ -45,6 +45,7 @@ bool httpConnect() {
     client.stop();
     delay(50);
   }
+
   bool ok = client.connect(apiHost, apiPort);
   if (ok) Serial.println("Server: connected");
   else    Serial.println("Server: FAILED");
@@ -107,294 +108,403 @@ bool isFinishedMessage(String s) {
   return (s == "finished");
 }
 
-// ===================== PATHFINDING / DRIVE =====================
-
-// Sensors
-int AnalogValue[5] = {0, 0, 0, 0, 0};
-int AnalogPin[5]   = {4, 5, 6, 7, 15};
+// ===================== ROBOT HARDWARE CONFIGURATION =====================
+// ---------- Sensors ----------
+int AnalogValue[5] = {0,0,0,0,0};
+int AnalogPin[5]   = {4,5,6,7,15};
 int threshold      = 1000;
 
-// Motors
+// ---------- Motors ----------
 int motor1PWM   = 37;
 int motor1Phase = 38;
 int motor2PWM   = 39;
 int motor2Phase = 20;
 
-// Line following
-int   baseSpeed = 200;
-float Kp = 190.0;
-float Kd = 45.0;
-float lastError = 0;
+// ---------- Line Following Tuning (KP/KD increased significantly) ----------
+int   baseSpeed   = 200;     // 0-255
+float Kp          = 320.0;   // increased
+float Kd          = 110.0;   // increased
+float lastError   = 0;
 
-// Turn tuning (YOUR improved movement constants)
-static const int TURN_PRE_FORWARD_MS = 70;  // tiny forward nudge
-static const int TURN_PRE_PAUSE_MS   = 40;  // settle before pivot
-static const int TURN90_MS           = 375; // your original value
+// ---------- Turn tuning ----------
+const int TURN_PRE_FORWARD_MS = 120;
+const int TURN_PRE_PAUSE_MS   = 50;
+const int TURN90_MS           = 350;
 
-// Graph
+// ---------- Parking behavior ----------
+const unsigned long PARK_WAIT_MS = 1500;
+
+// ===================== ULTRASONIC (HC-SR04) =====================
+// NOTE: HC-SR04 ECHO is 5V. Use a voltage divider to 3.3V for ESP32 input.
+const int US_TRIG_PIN = 16;
+const int US_ECHO_PIN = 17;
+
+// Stop as close as practical (HC-SR04 gets unreliable below ~2–3cm)
+const float PARK_STOP_CM = 5.0f;
+const uint32_t US_SAMPLE_MS = 40;
+
+// ===================== GRAPH / PATHFINDING =====================
 const int NUM_NODES = 7;
 
+// Movement: 1=forward, -1=180, 2=left, 3=right
 int antiClockwiseMatrix[NUM_NODES][NUM_NODES] = {
-  {0,  0,  0,  0, -1,  1,  0},
-  {0,  0,  0,  0,  0,  1, -1},
-  {0,  0,  0,  1,  0, -1,  0},
-  {0,  0, -1,  0,  0,  0,  1},
-  {1,  0,  0,  0,  0,  0, -1},
-  {-1, 2,  1,  0,  0,  0,  0},
-  {0,  2,  0, -1,  1,  0,  0}
+  {0,  0,  0,  0, -1,  1,  0},  // 0
+  {0,  0,  0,  0,  0,  1,  1},  // 1  <-- FIX: 1->5 is STRAIGHT (was -1 causing spinning)
+  {0,  0,  0,  1,  0, -1,  0},  // 2
+  {0,  0, -1,  0,  0,  0,  1},  // 3
+  {1,  0,  0,  0,  0,  0, -1},  // 4
+  {-1, 2,  1,  0,  0,  0,  0},  // 5
+  {0,  2,  0, -1,  1,  0,  0}   // 6
 };
 
 int clockwiseMatrix[NUM_NODES][NUM_NODES] = {
-  {0,  0,  0,  0,  1, -1,  0},
-  {0,  0,  0,  0,  0, -1,  1},
-  {0,  0,  0,  1,  0, -1,  0},
-  {0,  0,  1,  0,  0,  0, -1},
-  {-1, 0,  0,  0,  0,  0,  1},
-  {1,  3, -1,  0,  0,  0,  0},
-  {0,  3,  0,  1, -1,  0,  0}
+  {0,  0,  0,  0,  1, -1,  0},  // 0
+  {0,  0,  0,  0,  0,  1, -1},  // 1
+  {0,  0,  0,  1,  0, -1,  0},  // 2
+  {0,  0,  1,  0,  0,  0, -1},  // 3
+  {-1, 0,  0,  0,  0,  0,  1},  // 4
+  {1,  3, -1,  0,  0,  0,  0},  // 5
+  {0,  3,  0,  1, -1,  0,  0}   // 6
 };
 
 int path[10];
-int pathStep = 0;
+int pathStep   = 0;
 int pathLength = 0;
 
-bool clockwise = false;
-bool atNode = false;
-bool navigating = false;
+// ===================== NAV STATE =====================
+int  currentNode = -1;
+int  currentGoal = -1;
+bool clockwise    = false;
+bool atNode       = false;
+bool navigating   = false;
 bool pathComputed = false;
-bool startingUp = true;
+bool startingUp   = true;
 
+bool finishedAll     = false;
+bool reachedGoalFlag = false;
+
+// Node latch (re-arm when leaving node OR short timeout)
 bool nodeArmed = true;
 unsigned long lastNodeTime = 0;
 
-int currentNode = -1;
-int targetNode = -1;
-bool reachedTargetFlag = false;
+// ===================== PARKING STATE MACHINE =====================
+// Parking is triggered when server says "5":
+// navigate to node 5, then drive straight using ultrasonic until close to wall.
+// If it detects lots of white during approach, it backs away and stops.
+enum ParkingStage : uint8_t {
+  PARK_NONE = 0,
+  PARK_TO_5,
+  PARK_APPROACH_WALL,
+  PARK_STOPPED
+};
+ParkingStage parkingStage = PARK_NONE;
 
-bool finishedAll = false;
+float minApproachCm = 9999.0f;
+uint32_t lastUSSample = 0;
 
-// ========== SENSOR / NODE DETECTION ==========
-void ReadSensors() {
-  for (int i = 0; i < 5; i++) AnalogValue[i] = analogRead(AnalogPin[i]);
-}
+// ===================== PROTOTYPES =====================
+void ReadSensors();
+bool isNodeNow();
+bool detectNodeStable();
+bool hasLeftNodeArea();
 
-bool isNodeNow() {
-  ReadSensors();
-  int whiteCount = 0;
-  for (int i = 0; i < 5; i++) {
-    if (AnalogValue[i] < threshold) whiteCount++;
+void SetMotors(int leftSpeed, int rightSpeed);
+void motorStop();
+
+void turn180();
+void turn90Left();
+void turn90Right();
+
+void lineFollowing();
+
+bool dijkstraPathfinding(int startIdx, int endIdx);
+void navigateToTarget(int targetNode);
+void executeMovement(int movementType);
+
+int movementForEdge(int from, int to);
+
+void handleStartup();
+void handleNodeArrival();
+void printCurrentStatus();
+
+float ultrasonicReadCm();
+void startParkingTo5();
+void parkingApproachWallTick();
+void backAwayFromWhiteAndStop();
+
+// ===================== SETUP =====================
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  pinMode(motor1PWM, OUTPUT);
+  pinMode(motor1Phase, OUTPUT);
+  pinMode(motor2PWM, OUTPUT);
+  pinMode(motor2Phase, OUTPUT);
+
+  for (int i = 0; i < 5; i++) pinMode(AnalogPin[i], INPUT);
+
+  digitalWrite(motor1Phase, HIGH);
+  digitalWrite(motor2Phase, HIGH);
+
+  pinMode(US_TRIG_PIN, OUTPUT);
+  pinMode(US_ECHO_PIN, INPUT);
+  digitalWrite(US_TRIG_PIN, LOW);
+
+  connectToWiFi();
+  if (WiFi.status() != WL_CONNECTED) {
+    delay(3000);
+    ESP.restart();
   }
-  return (whiteCount >= 4);
+
+  Serial.println("Robot Navigation + Server + Parking@5 + Ultrasonic wall stop");
+  Serial.println("================================");
 }
 
-bool detectNodeStable() {
-  int hits = 0;
-  const int samples = 6;
+// ===================== LOOP =====================
+void loop() {
+  if (finishedAll) {
+    motorStop();
+    delay(10);
+    return;
+  }
 
-  for (int k = 0; k < samples; k++) {
-    if (isNodeNow()) hits++;
+  if (parkingStage == PARK_APPROACH_WALL) {
+    parkingApproachWallTick();
     delay(5);
+    return;
   }
 
-  bool nodeDetected = (hits >= 4);
+  if (parkingStage == PARK_STOPPED) {
+    motorStop();
+    delay(10);
+    return;
+  }
 
-  if (nodeDetected) {
-    Serial.print("NODE DETECT. hits=");
-    Serial.print(hits);
-    Serial.print(" sensors: ");
-    ReadSensors();
-    for (int i = 0; i < 5; i++) {
-      Serial.print(AnalogValue[i]);
-      Serial.print(" ");
+  // Re-arm node detection
+  if (!nodeArmed) {
+    if (hasLeftNodeArea() || (millis() - lastNodeTime > 250)) {
+      nodeArmed = true;
     }
-    Serial.println();
   }
 
-  return nodeDetected;
-}
-
-bool hasLeftNodeArea() {
-  int notNodeHits = 0;
-  const int samples = 10;
-
-  for (int k = 0; k < samples; k++) {
-    if (!isNodeNow()) notNodeHits++;
-    delay(5);
+  if (startingUp) {
+    handleStartup();
+  } else if (navigating) {
+    if (!atNode) {
+      lineFollowing();
+      if (nodeArmed && detectNodeStable()) {
+        handleNodeArrival();
+      }
+    }
+  } else {
+    motorStop();
   }
 
-  return (notNodeHits >= 7);
+  // Server logic: ONLY when reachedGoalFlag and NOT in ultrasonic approach
+  if (!startingUp && !navigating && reachedGoalFlag && parkingStage != PARK_APPROACH_WALL && parkingStage != PARK_STOPPED) {
+    reachedGoalFlag = false;
+
+    String resp = apiPostArrived(currentNode);
+    if (resp.length() == 0) {
+      finishedAll = true;
+      motorStop();
+    } else if (isFinishedMessage(resp)) {
+      Serial.println("Server said: Finished");
+      finishedAll = true;
+      motorStop();
+    } else {
+      int nextNode = resp.toInt();
+
+      if (nextNode == 5) {
+        startParkingTo5();
+      } else {
+        parkingStage = PARK_NONE;
+        currentGoal = nextNode;
+        navigateToTarget(currentGoal);
+      }
+    }
+  }
+
+  static unsigned long lastPrintTime = 0;
+  if (millis() - lastPrintTime > 2000) {
+    printCurrentStatus();
+    lastPrintTime = millis();
+  }
+
+  delay(10);
 }
 
-// ========== MOTOR CONTROL ==========
-void SetMotors(int leftSpeed, int rightSpeed) {
-  leftSpeed  = constrain(leftSpeed, 0, 255);
-  rightSpeed = constrain(rightSpeed, 0, 255);
+// ===================== STARTUP =====================
+void handleStartup() {
+  lineFollowing();
 
-  analogWrite(motor1PWM, leftSpeed);
-  analogWrite(motor2PWM, rightSpeed);
+  if (nodeArmed && detectNodeStable()) {
+    motorStop();
+    delay(200);
 
+    currentNode = 0;
+    startingUp = false;
+
+    reachedGoalFlag = true;
+
+    nodeArmed = false;
+    lastNodeTime = millis();
+    atNode = false;
+
+    Serial.println("STARTUP: Node detected -> currentNode=0, requesting server.");
+  }
+}
+
+// ===================== NODE ARRIVAL =====================
+void handleNodeArrival() {
+  atNode = true;
+  motorStop();
+  delay(200);
+
+  if (!pathComputed || !navigating) {
+    atNode = false;
+    return;
+  }
+
+  if (pathStep >= pathLength) {
+    navigating = false;
+    pathComputed = false;
+    atNode = false;
+    return;
+  }
+
+  // Node correction: lock to expected node in path
+  currentNode = path[pathStep];
+  Serial.print("Node arrival -> currentNode corrected to expected: ");
+  Serial.println(currentNode);
+
+  // Goal reached
+  if (currentNode == currentGoal) {
+    navigating = false;
+    pathComputed = false;
+
+    nodeArmed = false;
+    lastNodeTime = millis();
+    atNode = false;
+
+    // If we parked at 5, begin ultrasonic approach (straight)
+    if (parkingStage == PARK_TO_5 && currentGoal == 5) {
+      Serial.println("Parking: reached node 5 -> ultrasonic straight approach");
+      motorStop();
+      delay(PARK_WAIT_MS);
+
+      minApproachCm = 9999.0f;
+      lastUSSample = 0;
+      parkingStage = PARK_APPROACH_WALL;
+      return;
+    }
+
+    // Normal mode: notify server
+    reachedGoalFlag = true;
+    return;
+  }
+
+  // Continue path
+  if (pathStep >= pathLength - 1) {
+    navigating = false;
+    pathComputed = false;
+    atNode = false;
+    return;
+  }
+
+  int from = path[pathStep];
+  int to   = path[pathStep + 1];
+  int movement = movementForEdge(from, to);
+
+  pathStep++;
+  executeMovement(movement);
+
+  nodeArmed = false;
+  lastNodeTime = millis();
+  atNode = false;
+}
+
+// ===================== PARKING TRIGGER =====================
+void startParkingTo5() {
+  Serial.println("Server said 5 -> navigate to node 5, then ultrasonic stop.");
+
+  parkingStage = PARK_TO_5;
+  currentGoal = 5;
+
+  navigateToTarget(currentGoal);
+
+  nodeArmed = false;
+  lastNodeTime = millis();
+  atNode = false;
+}
+
+// ===================== ULTRASONIC APPROACH (AFTER STRAIGHT) =====================
+void parkingApproachWallTick() {
+  // Drive straight
   digitalWrite(motor1Phase, HIGH);
   digitalWrite(motor2Phase, HIGH);
+  analogWrite(motor1PWM, baseSpeed);
+  analogWrite(motor2PWM, baseSpeed);
+
+  // If it detects a lot of white (node/white patch), move away and stop.
+  if (isNodeNow()) {
+    backAwayFromWhiteAndStop();
+    return;
+  }
+
+  uint32_t now = millis();
+  if (now - lastUSSample < US_SAMPLE_MS) return;
+  lastUSSample = now;
+
+  float cm = ultrasonicReadCm();
+  if (cm <= 0.0f) return;
+
+  if (cm < minApproachCm) {
+    minApproachCm = cm;
+    Serial.print("Approach cm (new min): ");
+    Serial.println(minApproachCm, 2);
+  }
+
+  if (minApproachCm <= PARK_STOP_CM) {
+    Serial.println("Ultrasonic: stop distance reached -> STOPPED");
+    motorStop();
+    parkingStage = PARK_STOPPED;
+  }
 }
 
-void motorStop() {
-  analogWrite(motor1PWM, 0);
-  analogWrite(motor2PWM, 0);
-}
+void backAwayFromWhiteAndStop() {
+  Serial.println("White detected during approach -> backing away and STOP");
 
-void turn180() {
-  Serial.println("Turning 180°...");
+  // Back away briefly
   digitalWrite(motor1Phase, LOW);
-  digitalWrite(motor2Phase, HIGH);
-  analogWrite(motor1PWM, baseSpeed);
-  analogWrite(motor2PWM, baseSpeed);
-  delay(700);
-  motorStop();
-}
-
-// ========== 90° TURNS (IMPROVED: tiny forward nudge before turn) ==========
-void turn90Left() {
-  Serial.println("Turning 90° left...");
-
-  // 1) tiny forward nudge
-  digitalWrite(motor1Phase, HIGH);
-  digitalWrite(motor2Phase, HIGH);
-  analogWrite(motor1PWM, baseSpeed);
-  analogWrite(motor2PWM, baseSpeed);
-  delay(TURN_PRE_FORWARD_MS);
-  motorStop();
-  delay(TURN_PRE_PAUSE_MS);
-
-  // 2) pivot left
-  digitalWrite(motor1Phase, HIGH);
   digitalWrite(motor2Phase, LOW);
   analogWrite(motor1PWM, baseSpeed);
   analogWrite(motor2PWM, baseSpeed);
-  delay(TURN90_MS);
+  delay(220);
+
   motorStop();
+  parkingStage = PARK_STOPPED;
 }
 
-void turn90Right() {
-  Serial.println("Turning 90° right...");
+float ultrasonicReadCm() {
+  digitalWrite(US_TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(US_TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(US_TRIG_PIN, LOW);
 
-  // 1) tiny forward nudge
-  digitalWrite(motor1Phase, HIGH);
-  digitalWrite(motor2Phase, HIGH);
-  analogWrite(motor1PWM, baseSpeed);
-  analogWrite(motor2PWM, baseSpeed);
-  delay(TURN_PRE_FORWARD_MS);
-  motorStop();
-  delay(TURN_PRE_PAUSE_MS);
+  uint32_t duration = pulseIn(US_ECHO_PIN, HIGH, 30000UL);
+  if (duration == 0) return 0.0f;
 
-  // 2) pivot right
-  digitalWrite(motor1Phase, LOW);
-  digitalWrite(motor2Phase, HIGH);
-  analogWrite(motor1PWM, baseSpeed);
-  analogWrite(motor2PWM, baseSpeed);
-  delay(TURN90_MS);
-  motorStop();
+  return (float)duration / 58.0f;
 }
 
+// ===================== PATHFINDING =====================
 int movementForEdge(int from, int to) {
   return clockwise ? clockwiseMatrix[from][to] : antiClockwiseMatrix[from][to];
 }
 
-// ========== MOVEMENT EXECUTION (WITH RE-ARM FIX) ==========
-void executeMovement(int movementType) {
-  motorStop();
-  delay(200);
-
-  switch (movementType) {
-    case 1: // forward
-      digitalWrite(motor1Phase, HIGH);
-      digitalWrite(motor2Phase, HIGH);
-      analogWrite(motor1PWM, baseSpeed);
-      analogWrite(motor2PWM, baseSpeed);
-      delay(500);
-      motorStop();
-      delay(150);
-      break;
-
-    case -1: // 180° and flip matrix
-      turn180();
-      clockwise = !clockwise;
-      Serial.print("Matrix is now: ");
-      Serial.println(clockwise ? "CLOCKWISE" : "ANTI-CLOCKWISE");
-
-      digitalWrite(motor1Phase, HIGH);
-      digitalWrite(motor2Phase, HIGH);
-      analogWrite(motor1PWM, baseSpeed);
-      analogWrite(motor2PWM, baseSpeed);
-      delay(500);
-      motorStop();
-      delay(150);
-      break;
-
-    case 2:
-      turn90Left(); // includes nudge
-      digitalWrite(motor1Phase, HIGH);
-      digitalWrite(motor2Phase, HIGH);
-      analogWrite(motor1PWM, baseSpeed);
-      analogWrite(motor2PWM, baseSpeed);
-      delay(500);
-      motorStop();
-      delay(150);
-      break;
-
-    case 3:
-      turn90Right(); // includes nudge
-      digitalWrite(motor1Phase, HIGH);
-      digitalWrite(motor2Phase, HIGH);
-      analogWrite(motor1PWM, baseSpeed);
-      analogWrite(motor2PWM, baseSpeed);
-      delay(500);
-      motorStop();
-      delay(150);
-      break;
-
-    default:
-      Serial.println("ERROR: movementType=0 (no edge). Stopping.");
-      motorStop();
-      delay(500);
-      break;
-  }
-
-  // CRITICAL FIX: disarm node detection until we leave node area (not a long time gate)
-  nodeArmed = false;
-  lastNodeTime = millis();
-}
-
-// ========== LINE FOLLOWING ==========
-void lineFollowing() {
-  ReadSensors();
-
-  int minIndex = 0;
-  int minValue = AnalogValue[0];
-
-  for (int i = 1; i < 5; i++) {
-    if (AnalogValue[i] < minValue) {
-      minValue = AnalogValue[i];
-      minIndex = i;
-    }
-  }
-
-  if (minIndex == 0) { SetMotors(220, 40); lastError = -3; return; }
-  if (minIndex == 4) { SetMotors(40, 220); lastError =  3; return; }
-
-  float error = minIndex - 2;
-  float correction = Kp * error + Kd * (error - lastError);
-  lastError = error;
-
-  int leftSpeed  = baseSpeed - correction;
-  int rightSpeed = baseSpeed + correction;
-
-  leftSpeed  = constrain(leftSpeed, 0, 255);
-  rightSpeed = constrain(rightSpeed, 0, 255);
-
-  SetMotors(leftSpeed, rightSpeed);
-}
-
-// ========== PATHFINDING ==========
 bool dijkstraPathfinding(int startIdx, int endIdx) {
   pathLength = 0;
   pathStep = 0;
@@ -452,11 +562,17 @@ bool dijkstraPathfinding(int startIdx, int endIdx) {
   return true;
 }
 
-void navigateToTarget(int newTarget) {
-  targetNode = newTarget;
-  reachedTargetFlag = false;
+void navigateToTarget(int targetNode) {
+  if (currentNode < 0 || currentNode >= NUM_NODES) {
+    Serial.println("ERROR: currentNode invalid, cannot navigate.");
+    navigating = false;
+    pathComputed = false;
+    motorStop();
+    return;
+  }
 
   if (!dijkstraPathfinding(currentNode, targetNode)) {
+    Serial.println("ERROR: No path found. Stopping.");
     navigating = false;
     pathComputed = false;
     motorStop();
@@ -472,207 +588,243 @@ void navigateToTarget(int newTarget) {
     atNode = false;
 
     executeMovement(firstMove);
+
+    nodeArmed = false;
+    lastNodeTime = millis();
   } else {
     pathStep = 0;
   }
 }
 
-// ========== STATUS PRINTING ==========
+// ===================== SENSORS / NODE DETECTION =====================
+void ReadSensors() {
+  for (int i = 0; i < 5; i++) AnalogValue[i] = analogRead(AnalogPin[i]);
+}
+
+bool isNodeNow() {
+  ReadSensors();
+  int whiteCount = 0;
+  for (int i = 0; i < 5; i++) {
+    if (AnalogValue[i] < threshold) whiteCount++;
+  }
+  return (whiteCount >= 4);
+}
+
+bool detectNodeStable() {
+  int hits = 0;
+  const int samples = 6;
+
+  for (int k = 0; k < samples; k++) {
+    if (isNodeNow()) hits++;
+    delay(5);
+  }
+  return (hits >= 4);
+}
+
+bool hasLeftNodeArea() {
+  int notNodeHits = 0;
+  const int samples = 10;
+
+  for (int k = 0; k < samples; k++) {
+    if (!isNodeNow()) notNodeHits++;
+    delay(5);
+  }
+  return (notNodeHits >= 7);
+}
+
+// ===================== MOTOR CONTROL =====================
+void SetMotors(int leftSpeed, int rightSpeed) {
+  leftSpeed  = constrain(leftSpeed, 0, 255);
+  rightSpeed = constrain(rightSpeed, 0, 255);
+
+  analogWrite(motor1PWM, leftSpeed);
+  analogWrite(motor2PWM, rightSpeed);
+
+  digitalWrite(motor1Phase, HIGH);
+  digitalWrite(motor2Phase, HIGH);
+}
+
+void motorStop() {
+  analogWrite(motor1PWM, 0);
+  analogWrite(motor2PWM, 0);
+}
+
+// ===================== TURNS =====================
+void turn180() {
+  digitalWrite(motor1Phase, LOW);
+  digitalWrite(motor2Phase, HIGH);
+  analogWrite(motor1PWM, baseSpeed);
+  analogWrite(motor2PWM, baseSpeed);
+  delay(700);
+  motorStop();
+}
+
+void turn90Left() {
+  // forward nudge
+  digitalWrite(motor1Phase, HIGH);
+  digitalWrite(motor2Phase, HIGH);
+  analogWrite(motor1PWM, baseSpeed);
+  analogWrite(motor2PWM, baseSpeed);
+  delay(TURN_PRE_FORWARD_MS);
+  motorStop();
+  delay(TURN_PRE_PAUSE_MS);
+
+  // pivot left
+  digitalWrite(motor1Phase, HIGH);
+  digitalWrite(motor2Phase, LOW);
+  analogWrite(motor1PWM, baseSpeed);
+  analogWrite(motor2PWM, baseSpeed);
+  delay(TURN90_MS);
+  motorStop();
+}
+
+void turn90Right() {
+  // forward nudge
+  digitalWrite(motor1Phase, HIGH);
+  digitalWrite(motor2Phase, HIGH);
+  analogWrite(motor1PWM, baseSpeed);
+  analogWrite(motor2PWM, baseSpeed);
+  delay(TURN_PRE_FORWARD_MS);
+  motorStop();
+  delay(TURN_PRE_PAUSE_MS);
+
+  // pivot right
+  digitalWrite(motor1Phase, LOW);
+  digitalWrite(motor2Phase, HIGH);
+  analogWrite(motor1PWM, baseSpeed);
+  analogWrite(motor2PWM, baseSpeed);
+  delay(TURN90_MS);
+  motorStop();
+}
+
+// ===================== MOVEMENT EXECUTION =====================
+void executeMovement(int movementType) {
+  motorStop();
+  delay(120);
+
+  switch (movementType) {
+    case 1: // forward
+      digitalWrite(motor1Phase, HIGH);
+      digitalWrite(motor2Phase, HIGH);
+      analogWrite(motor1PWM, baseSpeed);
+      analogWrite(motor2PWM, baseSpeed);
+      delay(320);
+      motorStop();
+      delay(60);
+      break;
+
+    case -1: // 180° and flip matrix
+      turn180();
+      clockwise = !clockwise;
+
+      digitalWrite(motor1Phase, HIGH);
+      digitalWrite(motor2Phase, HIGH);
+      analogWrite(motor1PWM, baseSpeed);
+      analogWrite(motor2PWM, baseSpeed);
+      delay(320);
+      motorStop();
+      delay(60);
+      break;
+
+    case 2: // left
+      turn90Left();
+      digitalWrite(motor1Phase, HIGH);
+      digitalWrite(motor2Phase, HIGH);
+      analogWrite(motor1PWM, baseSpeed);
+      analogWrite(motor2PWM, baseSpeed);
+      delay(320);
+      motorStop();
+      delay(60);
+      break;
+
+    case 3: // right
+      turn90Right();
+      digitalWrite(motor1Phase, HIGH);
+      digitalWrite(motor2Phase, HIGH);
+      analogWrite(motor1PWM, baseSpeed);
+      analogWrite(motor2PWM, baseSpeed);
+      delay(320);
+      motorStop();
+      delay(60);
+      break;
+
+    default:
+      motorStop();
+      delay(300);
+      break;
+  }
+
+  nodeArmed = false;
+  lastNodeTime = millis();
+}
+
+// ===================== LINE FOLLOWING =====================
+void lineFollowing() {
+  ReadSensors();
+
+  int minIndex = 0;
+  int minValue = AnalogValue[0];
+
+  for (int i = 1; i < 5; i++) {
+    if (AnalogValue[i] < minValue) {
+      minValue = AnalogValue[i];
+      minIndex = i;
+    }
+  }
+
+  if (minIndex == 0) {
+    SetMotors(220, 40);
+    lastError = -3;
+    return;
+  }
+  if (minIndex == 4) {
+    SetMotors(40, 220);
+    lastError = 3;
+    return;
+  }
+
+  float error = minIndex - 2;
+  float correction = Kp * error + Kd * (error - lastError);
+  lastError = error;
+
+  int leftSpeed  = baseSpeed - correction;
+  int rightSpeed = baseSpeed + correction;
+
+  leftSpeed  = constrain(leftSpeed, 0, 255);
+  rightSpeed = constrain(rightSpeed, 0, 255);
+
+  SetMotors(leftSpeed, rightSpeed);
+}
+
+// ===================== STATUS =====================
 void printCurrentStatus() {
   Serial.println("\n=== CURRENT STATUS ===");
-  Serial.print("Current Node (logical): ");
-  Serial.println(currentNode);
-  Serial.print("Target Node: ");
-  Serial.println(targetNode);
+  Serial.print("currentNode: "); Serial.println(currentNode);
+  Serial.print("currentGoal: "); Serial.println(currentGoal);
+  Serial.print("parkingStage: "); Serial.println((int)parkingStage);
 
-  Serial.print("State: ");
+  Serial.print("state: ");
   if (startingUp) Serial.println("STARTUP");
   else if (navigating) Serial.println("NAVIGATING");
   else Serial.println("STOPPED");
 
-  Serial.print("pathStep (next expected node idx): ");
-  Serial.println(pathStep);
-  Serial.print("pathLength: ");
-  Serial.println(pathLength);
+  Serial.print("pathStep: "); Serial.println(pathStep);
+  Serial.print("pathLength: "); Serial.println(pathLength);
 
   if (pathComputed && pathStep < pathLength) {
-    Serial.print("Next expected node: ");
+    Serial.print("nextExpectedNode: ");
     Serial.println(path[pathStep]);
-  } else if (pathComputed) {
-    Serial.println("Next expected node: (none)");
+  } else {
+    Serial.println("nextExpectedNode: (none)");
   }
 
-  Serial.print("Node armed: ");
-  Serial.println(nodeArmed ? "YES" : "NO");
+  Serial.print("nodeArmed: "); Serial.println(nodeArmed ? "YES" : "NO");
+  Serial.print("matrix: "); Serial.println(clockwise ? "CLOCKWISE" : "ANTI-CLOCKWISE");
 
-  Serial.print("Matrix: ");
-  Serial.println(clockwise ? "CLOCKWISE" : "ANTI-CLOCKWISE");
-  Serial.println("====================\n");
-}
-
-// ========== STARTUP / NODE HANDLING ==========
-void handleStartup() {
-  // Re-arm based on leaving node area (plus small safety timeout)
-  if (!nodeArmed) {
-    if (hasLeftNodeArea() || (millis() - lastNodeTime > 250)) nodeArmed = true;
+  if (parkingStage == PARK_APPROACH_WALL || parkingStage == PARK_STOPPED) {
+    Serial.print("minApproachCm: ");
+    Serial.println(minApproachCm, 2);
   }
 
-  lineFollowing();
-
-  if (nodeArmed && detectNodeStable()) {
-    motorStop();
-    delay(200);
-
-    // Start at node 0
-    currentNode = 0;
-
-    // Immediately ask server for the first next node
-    reachedTargetFlag = true;
-    targetNode = 0;
-    navigating = false;
-    pathComputed = false;
-
-    startingUp = false;
-
-    nodeArmed = false;
-    lastNodeTime = millis();
-    atNode = false;
-
-    printCurrentStatus();
-  }
-}
-
-void handleNodeArrival() {
-  atNode = true;
-  motorStop();
-  delay(250);
-
-  if (!pathComputed || !navigating) {
-    atNode = false;
-    return;
-  }
-
-  if (pathStep >= pathLength) {
-    navigating = false;
-    pathComputed = false;
-    reachedTargetFlag = true;
-    atNode = false;
-    return;
-  }
-
-  currentNode = path[pathStep];
-
-  // ONLY notify server when we hit the TARGET node
-  if (currentNode == targetNode) {
-    navigating = false;
-    pathComputed = false;
-    reachedTargetFlag = true;
-
-    nodeArmed = false;
-    lastNodeTime = millis();
-    atNode = false;
-
-    printCurrentStatus();
-    return;
-  }
-
-  if (pathStep >= pathLength - 1) {
-    navigating = false;
-    pathComputed = false;
-    reachedTargetFlag = true;
-    atNode = false;
-    return;
-  }
-
-  int from = path[pathStep];
-  int to   = path[pathStep + 1];
-  int movement = movementForEdge(from, to);
-
-  pathStep++;
-  executeMovement(movement);
-
-  atNode = false;
-
-  printCurrentStatus();
-}
-
-void startNextLegTo(int nextNode) {
-  if (nextNode < 0 || nextNode >= NUM_NODES) {
-    finishedAll = true;
-    motorStop();
-    return;
-  }
-
-  if (nextNode == currentNode) {
-    // Already there: ask server again
-    reachedTargetFlag = true;
-    targetNode = currentNode;
-    navigating = false;
-    pathComputed = false;
-    return;
-  }
-
-  navigateToTarget(nextNode);
-}
-
-// ===================== SETUP / LOOP =====================
-void setup() {
-  Serial.begin(115200);
-  delay(1000);
-
-  pinMode(motor1PWM, OUTPUT);
-  pinMode(motor1Phase, OUTPUT);
-  pinMode(motor2PWM, OUTPUT);
-  pinMode(motor2Phase, OUTPUT);
-  for (int i = 0; i < 5; i++) pinMode(AnalogPin[i], INPUT);
-
-  digitalWrite(motor1Phase, HIGH);
-  digitalWrite(motor2Phase, HIGH);
-
-  connectToWiFi();
-  if (WiFi.status() != WL_CONNECTED) {
-    delay(3000);
-    ESP.restart();
-  }
-}
-
-void loop() {
-  if (startingUp) {
-    handleStartup();
-  }
-
-  if (!startingUp && navigating) {
-    // Re-arm based on leaving node area (plus small safety timeout)
-    if (!nodeArmed) {
-      if (hasLeftNodeArea() || (millis() - lastNodeTime > 250)) nodeArmed = true;
-    }
-
-    if (!atNode) {
-      lineFollowing();
-      if (nodeArmed && detectNodeStable()) {
-        handleNodeArrival();
-      }
-    }
-  }
-
-  // ONLY talk to server when we reached the TARGET (or node 0 at startup)
-  if (!startingUp && !navigating && reachedTargetFlag && !finishedAll) {
-    reachedTargetFlag = false;
-
-    String serverResp = apiPostArrived(currentNode);
-    if (serverResp.length() == 0) {
-      finishedAll = true;
-      motorStop();
-    } else if (isFinishedMessage(serverResp)) {
-      Serial.println("Server said: Finished");
-      finishedAll = true;
-      motorStop();
-    } else {
-      int nextNode = serverResp.toInt();
-      startNextLegTo(nextNode);
-    }
-  }
-
-  if (finishedAll) motorStop();
-  delay(10);
+  Serial.println("======================");
 }
