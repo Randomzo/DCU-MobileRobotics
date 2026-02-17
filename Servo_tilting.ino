@@ -35,23 +35,21 @@ void straighten() {
 }
 
 void celebrate() {
-  straighten();
-  delay(10);
-  for (int pos = 90; pos <= 180; pos += 1) {
-    leftServo.write(pos);
-    rightServo.write(180 - pos);
-    delay(10);
-  }
- // Rotation from 180° to 0
-  for (int pos = 180; pos >= 0; pos -= 1) {
-    leftServo.write(pos);
-    rightServo.write(180 - pos);
-    delay(10);
-  }
-  for (int pos = 0; pos <= 90; pos += 1) {
-    leftServo.write(pos);
-    rightServo.write(180 - pos);
-    delay(10);
+  for (int i = 0; i =< 5; i++) {
+
+    leftServo.write(180);
+    rightServo.write(0);
+    delay(500);
+
+    leftServo.write(0);
+    rightServo.write(180);
+    delay(500);
+
+    tiltLeft();
+    delay(500);
+
+    tiltRight();
+    delay(500);
   }
 }
 
