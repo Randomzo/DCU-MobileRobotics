@@ -6,15 +6,15 @@ static const bool ENABLE_OBSTACLE_DETECTION = true;
 /* ===================== PINS / CONSTANTS ===================== */
 
 // ---------- WIFI / SERVER ----------
-static const char* WIFI_SSID     = "iot";
+static const char* WIFI_SSID = "iot";
 static const char* WIFI_PASSWORD = "temporizer36whit";
 
 static const char* API_HOST = "3.250.38.184";
-static const int   API_PORT = 8000;
-static const char* TEAM_ID  = "dggb1125";
+static const int API_PORT = 8000;
+static const char* TEAM_ID = "dggb1125";
 
 static const uint32_t WIFI_CONNECT_TIMEOUT_MS = 20000;
-static const uint32_t HTTP_TIMEOUT_MS         = 10000;
+static const uint32_t HTTP_TIMEOUT_MS = 10000;
 
 // ---------- NODE LED ----------
 static const int NODE_LED_PIN = 48;
@@ -23,26 +23,26 @@ static const uint32_t NODE_LED_ON_MS = 120;
 
 // ---------- LINE SENSORS ----------
 static const int NUM_SENSORS = 5;
-static const int ANALOG_PIN[NUM_SENSORS] = {4, 5, 6, 7, 15};
+static const int ANALOG_PIN[NUM_SENSORS] = { 4, 5, 6, 7, 15 };
 
 // Your convention: "low = white line"
 static const int LINE_THRESHOLD = 1000;
 
 // ---------- MOTORS ----------
-static const int MOTOR1_PWM   = 37; // left
+static const int MOTOR1_PWM = 37;  // left
 static const int MOTOR1_PHASE = 38;
-static const int MOTOR2_PWM   = 39; // right
+static const int MOTOR2_PWM = 39;  // right
 static const int MOTOR2_PHASE = 20;
 
 static const int BASE_SPEED = 210;
-static const int MIN_SPEED  = 0;
-static const int MAX_SPEED  = 255;
+static const int MIN_SPEED = 0;
+static const int MAX_SPEED = 255;
 
 // Motor2 offset (right motor PWM bias)
 static const int MOTOR2_OFFSET_PWM = 10;
 
 // Motor mismatch (~15% faster on one side)
-static const float LEFT_MOTOR_GAIN  = 1.00f;
+static const float LEFT_MOTOR_GAIN = 1.00f;
 static const float RIGHT_MOTOR_GAIN = 0.85f;
 
 // Line following gains
@@ -51,54 +51,61 @@ static const float KD = 45.0f;
 
 // Reduce turning aggressiveness (helps node detection)
 static const float CORRECTION_SCALE_NORMAL = 0.80f;
-static const float CORRECTION_SCALE_PARK   = 0.45f;
-static const float MAX_CORRECTION          = 170.0f;
+static const float CORRECTION_SCALE_PARK = 0.45f;
+static const float MAX_CORRECTION = 170.0f;
 
 // ===== Parking straight-line trim (your proven straight code) =====
 // NEGATIVE slows RIGHT (fixes veering left)
-static const int PARK_TRIM = -35;   // use the value that works for you
+static const int PARK_TRIM = -35;  // use the value that works for you
 
 // ---------- LOOP CADENCE ----------
 static const uint32_t CONTROL_TICK_MS = 5;
 static const uint32_t STATUS_PRINT_MS = 2000;
 
 // ---------- NODE DETECTION (BASE) ----------
-static const uint8_t  NODE_TRIP_LOWCOUNT_STRONG = 4;
-static const uint32_t NODE_DEBOUNCE_MS          = 15;
-static const uint32_t NODE_REARM_MS             = 170;
+static const uint8_t NODE_TRIP_LOWCOUNT_STRONG = 4;
+static const uint32_t NODE_DEBOUNCE_MS = 15;
+static const uint32_t NODE_REARM_MS = 170;
 
 // ---------- NODE 6 "RELAXED" DETECTION (ONLY when approaching node 6) ----------
-static const uint8_t  NODE6_TRIP_LOWCOUNT_STRONG = 3;
-static const uint8_t  NODE6_TRIP_LOWCOUNT_WEAK   = 2;
-static const uint32_t NODE6_DEBOUNCE_MS          = 10;
-static const bool     NODE6_ALLOW_WEAK_NO_OUTERS = true;
+static const uint8_t NODE6_TRIP_LOWCOUNT_STRONG = 3;
+static const uint8_t NODE6_TRIP_LOWCOUNT_WEAK = 2;
+static const uint32_t NODE6_DEBOUNCE_MS = 10;
+static const bool NODE6_ALLOW_WEAK_NO_OUTERS = true;
 
 // ---------- TURN / MOVE TIMINGS ----------
 static const uint32_t TURN_PRE_FORWARD_MS = 120;
-static const uint32_t TURN_PRE_PAUSE_MS   = 30;
-static const uint32_t TURN90_MS           = 300;
+static const uint32_t TURN_PRE_PAUSE_MS = 30;
+static const uint32_t TURN90_MS = 300;
 
 static const uint32_t TURN180_MS_BASE = 650;
 static const float TURN180_SCALE_NORMAL = 1.00f;
-static const float TURN180_SCALE_NODE6  = 0.88f;   // tune 0.85–0.92
+static const float TURN180_SCALE_NODE6 = 0.88f;  // tune 0.85–0.92
 
 
-static const uint32_t MOVE_EXIT_NODE_MS   = 220;
-static const uint32_t MOVE_PAUSE_MS       = 35;
-static const uint32_t MOVE_PRESTOP_MS     = 60;
+static const uint32_t MOVE_EXIT_NODE_MS = 220;
+static const uint32_t MOVE_PAUSE_MS = 35;
+static const uint32_t MOVE_PRESTOP_MS = 60;
 
 // --- Parking special 180 at node 1 before going to node 6 ---
-static const uint32_t PARK_NODE1_POST180_BACKOFF_MS   = 120; // tune 60–200
-static const int      PARK_NODE1_POST180_BACKOFF_PWM  = 170; // tune 140–210
-static const uint32_t PARK_NODE1_POST180_PAUSE_MS     = 40;
+static const uint32_t PARK_NODE1_POST180_BACKOFF_MS = 120;  // tune 60–200
+static const int PARK_NODE1_POST180_BACKOFF_PWM = 170;      // tune 140–210
+static const uint32_t PARK_NODE1_POST180_PAUSE_MS = 40;
 
+
+
+// ----- OBSTACLE RETURN MODE (go back to last node, then replan) -----
+static bool obstacleReturnActive = false;
+static int obstacleReturnNode = -1;
+static bool obstacleSuppressDuringReturn = false;
+static int obstacleBlockedNextNode = -1;  // node we were TRYING to go to when obstacle hit
 
 
 
 // ---------- CATCH LINE ----------
 static const uint32_t CATCHLINE_TIMEOUT_MS = 675;
-static const int      CATCHLINE_SPEED      = 155;
-static const int      CATCHLINE_SPIN_DELTA = 120;
+static const int CATCHLINE_SPEED = 155;
+static const int CATCHLINE_SPIN_DELTA = 120;
 
 // ---------- ULTRASONIC ----------
 static const int US_TRIG_PIN = 17;
@@ -115,24 +122,24 @@ static const float US_HARD_MIN_CM = 2.5f;
 
 // Ultrasonic sampling
 static const uint32_t US_PERIOD_MS = 25;
-static const uint8_t  US_SAMPLES = 5;
-static const uint8_t  US_DISCARD = 1;
+static const uint8_t US_SAMPLES = 5;
+static const uint8_t US_DISCARD = 1;
 static const uint16_t US_SAMPLE_GAP_US = 200;
-static const float    US_EMA_ALPHA = 0.75f;
+static const float US_EMA_ALPHA = 0.75f;
 
 // Wall detection confidence
-static const uint8_t WALL_CONFIRM_HITS   = 3;
-static const uint8_t WALL_GRACE_INVALID  = 2;
+static const uint8_t WALL_CONFIRM_HITS = 3;
+static const uint8_t WALL_GRACE_INVALID = 2;
 
 // ---------- PARKING ----------
-static const int CMD_START_PARK  = 5;
+static const int CMD_START_PARK = 5;
 static const int PARK_START_NODE = 1;
 static const int PARK_INTERMEDIATE_NODE = 6;
 
 static const uint32_t PARK_TO_STRAIGHT_MS = 120;
-static const uint32_t PARK_LINE_LOST_MS   = 180;
+static const uint32_t PARK_LINE_LOST_MS = 180;
 
-static const int PARK_BASE_SPEED      = 200;
+static const int PARK_BASE_SPEED = 200;
 static const int PARK_BEND_DELTA_FAST = 35;
 static const int PARK_BEND_DELTA_SLOW = 60;
 
@@ -142,7 +149,7 @@ static const bool PARK_LINE_SIDE_REVERSED = true;
 static const int PARK_WALL_HIT_NODE = 5;
 // --- Node 6 extra sensitivity during parking leg 1->6 ---
 static const uint32_t NODE6_DEBOUNCE_MS_NORMAL = 18;  // your existing relaxed debounce
-static const uint32_t NODE6_DEBOUNCE_MS_PARK   = 8;   // extra sensitive (tune 6–12ms)
+static const uint32_t NODE6_DEBOUNCE_MS_PARK = 8;     // extra sensitive (tune 6–12ms)
 
 // Returns true only during parking travel from node 1 to node 6
 
@@ -152,65 +159,66 @@ static const uint32_t NODE6_DEBOUNCE_MS_PARK   = 8;   // extra sensitive (tune 6
 static const int NUM_NODES = 7;
 
 // ---------- ROUTE PREFERENCES ----------
-static const int NODE6_PENALTY_COST   = 4;
+static const int NODE6_PENALTY_COST = 4;
 static const int HUB_PREFERENCE_BONUS = 1;
 static const int EDGE_4_TO_3_PENALTY_COST = 35;
 
 // ---------- OBSTACLE DETECTION (NORMAL DRIVING) ----------
 static const float OBSTACLE_STOP_DISTANCE_CM = 5.0f;
-static const uint8_t OBSTACLE_CONFIRM_HITS   = 2;
-static const uint32_t OBSTACLE_CHECK_MS      = 40;
+static const uint8_t OBSTACLE_CONFIRM_HITS = 2;
+static const uint32_t OBSTACLE_CHECK_MS = 40;
 static const float OBSTACLE_MAX_VALID_CM = 80.0f;
+static uint32_t obstacleIgnoreUntilMs = 0;
 
 
 /* ===================== ROUTE MATRICES ===================== */
 // Movement: 1=forward, -1=180, 2=left, 3=right
 static int antiClockwiseMatrix[NUM_NODES][NUM_NODES] = {
-  {0,  0,  0,  0, -1,  1,  0},
-  {0,  0,  0,  0,  0, -1,  1},
-  {0,  0,  0,  1,  0, -1,  0},
-  {0,  0, -1,  0,  0,  0,  1},
-  {1,  0,  0,  0,  0,  0, -1},
-  {-1, 2,  1,  0,  0,  0,  0},
-  {0,  2,  0, -1,  1,  0,  0}
+  { 0, 0, 0, 0, -1, 1, 0 },
+  { 0, 0, 0, 0, 0, -1, 1 },
+  { 0, 0, 0, 1, 0, -1, 0 },
+  { 0, 0, -1, 0, 0, 0, 1 },
+  { 1, 0, 0, 0, 0, 0, -1 },
+  { -1, 2, 1, 0, 0, 0, 0 },
+  { 0, 2, 0, -1, 1, 0, 0 }
 };
- 
+
 static int clockwiseMatrix[NUM_NODES][NUM_NODES] = {
-  {0,  0,  0,  0,  1, -1,  0},
-  {0,  0,  0,  0,  0,  1, -1},
-  {0,  0,  0, -1,  0,  1,  0},
-  {0,  0,  1,  0,  0,  0, -1},
-  {-1, 0,  0,  0,  0,  0,  1},
-  {1,  3, -1,  0,  0,  0,  0},
-  {0,  3,  0,  1, -1,  0,  0}
+  { 0, 0, 0, 0, 1, -1, 0 },
+  { 0, 0, 0, 0, 0, 1, -1 },
+  { 0, 0, 0, -1, 0, 1, 0 },
+  { 0, 0, 1, 0, 0, 0, -1 },
+  { -1, 0, 0, 0, 0, 0, 1 },
+  { 1, 3, -1, 0, 0, 0, 0 },
+  { 0, 3, 0, 1, -1, 0, 0 }
 };
 
 /* ===================== GLOBALS ===================== */
 WiFiClient client;
 
-static int   analogValue[NUM_SENSORS] = {0,0,0,0,0};
-static float lastError      = 0.0f;
+static int analogValue[NUM_SENSORS] = { 0, 0, 0, 0, 0 };
+static float lastError = 0.0f;
 static float lastCorrection = 0.0f;
 
 static int path[10];
-static int pathStep   = 0;
+static int pathStep = 0;
 static int pathLength = 0;
 
-static int  currentNode = -1;
-static int  currentGoal = -1;
-static bool clockwise   = false;
-static bool navigating  = false;
-static bool pathComputed= false;
-static bool startingUp  = true;
+static int currentNode = -1;
+static int currentGoal = -1;
+static bool clockwise = false;
+static bool navigating = false;
+static bool pathComputed = false;
+static bool startingUp = true;
 
-static bool finishedAll     = false;
+static bool finishedAll = false;
 static bool reachedGoalFlag = false;
 
 // Node detection state
-static bool nodeArmed         = true;
-static bool nodeStableNow     = false;
+static bool nodeArmed = true;
+static bool nodeStableNow = false;
 static uint32_t nodeHighSince = 0;
-static uint32_t lastNodeTime  = 0;
+static uint32_t lastNodeTime = 0;
 
 // Expected next node (used for node-6 relaxed detection)
 static int expectedNextNode = -1;
@@ -221,8 +229,8 @@ static bool nodeEventLatched = false;
 
 // Obstacle detection state
 static uint32_t lastObstacleCheckMs = 0;
-static uint8_t  obstacleHitCount   = 0;
-static bool     obstacleDetected   = false;
+static uint8_t obstacleHitCount = 0;
+static bool obstacleDetected = false;
 
 // Control cadence
 static uint32_t lastControlTick = 0;
@@ -271,7 +279,7 @@ static uint32_t lineLostSinceMs = 0;
 static bool parkingWallReported = false;
 
 static inline bool node6ExtraSensitiveActive() {
-  return (parkingStage == PARK_GOTO_NODE6) && (currentGoal == PARK_INTERMEDIATE_NODE); // goal==6
+  return (parkingStage == PARK_GOTO_NODE6) && (currentGoal == PARK_INTERMEDIATE_NODE);  // goal==6
 }
 
 /* ===================== FORWARD DECLS ===================== */
@@ -287,7 +295,7 @@ bool isFinishedMessage(String s);
 void ReadSensorsFast();
 uint8_t countLowSensors();
 bool isLinePresent();
-int  lineMinIndex();
+int lineMinIndex();
 bool isNodeNowFast();
 void updateNodeDetector();
 
@@ -304,7 +312,7 @@ void lineFollowing(bool straightBias);
 bool dijkstraPathfinding(int startIdx, int endIdx);
 void navigateToTarget(int targetNode);
 void executeMovement(int movementType, int nextNode);
-int  movementForEdge(int from, int to);
+int movementForEdge(int from, int to);
 
 void handleStartup();
 void handleNodeArrival();
@@ -315,10 +323,10 @@ void enableUltrasonic();
 void disableUltrasonic();
 float ultrasonicMeasureOnceCm();
 float ultrasonicFilteredCm(bool forceSample);
-void  wallDetectUpdate(float cmFiltered, bool sampleValid);
-bool  isWallTooClose();
-void  resetUltrasonicState();
-bool  obstacleDetectedNow();
+void wallDetectUpdate(float cmFiltered, bool sampleValid);
+bool isWallTooClose();
+void resetUltrasonicState();
+bool obstacleDetectedNow();
 
 // parking
 void startParkingSequence();
@@ -326,10 +334,10 @@ void parkingTick();
 
 // special case helpers
 inline void applyMatrixOverrideFor90TurnAtSpecialNodes();
-void replanFromCurrentToGoal(bool doInititalMove);
+void replanFromCurrentToGoal(bool doInititalMove, bool flipDirection);
 
 // helper for line error
-bool computeLineError(float &errorOut);
+bool computeLineError(float& errorOut);
 
 // helper for parking straight
 static inline void DriveStraightTrim(int speed);
@@ -382,12 +390,18 @@ bool ensureWiFi() {
 
 bool httpConnect() {
   if (!ensureWiFi()) return false;
-  if (client.connected()) { client.stop(); delay(20); }
+  if (client.connected()) {
+    client.stop();
+    delay(20);
+  }
   return client.connect(API_HOST, API_PORT);
 }
 
 void httpStop() {
-  if (client.connected()) { client.stop(); delay(20); }
+  if (client.connected()) {
+    client.stop();
+    delay(20);
+  }
 }
 
 String readHTTPResponse() {
@@ -470,7 +484,10 @@ void setup() {
 
 /* ===================== LOOP ===================== */
 void loop() {
-  if (finishedAll) { motorStop(); return; }
+  if (finishedAll) {
+    motorStop();
+    return;
+  }
 
   const uint32_t now = millis();
   if (now - lastControlTick < CONTROL_TICK_MS) return;
@@ -496,93 +513,140 @@ void loop() {
       handleStartup();
     } else if (navigating) {
 
-      // --- OBSTACLE CHECK (enabled) ---
-      if (ENABLE_OBSTACLE_DETECTION &&
-          parkingStage == PARK_NONE &&
-          navigating &&
-          millis() - lastObstacleCheckMs >= OBSTACLE_CHECK_MS) {
+      // ================= RETURN-TO-NODE MODE =================
+      // After obstacle: we turned around and now must go back to last node.
+      if (obstacleReturnActive) {
+        lineFollowing(false);
+
+        // When we detect a node again, we assume it is the last node we left
+        if (nodeArmed && nodeStableNow) {
+          motorStop();
+          delay(120);
+
+          currentNode = obstacleReturnNode;
+
+          obstacleReturnActive = false;
+          obstacleReturnNode = -1;
+
+          // Re-arm node detection timing
+          nodeArmed = false;
+          lastNodeTime = millis();
+
+          // allow obstacle detection again after replan starts moving
+          obstacleSuppressDuringReturn = false;
+          obstacleIgnoreUntilMs = millis() + 400;
+
+          // ===== MANDATORY LEFT SPECIAL CASE =====
+          // If the blocked/attempted node was 1, and we returned to node 5 or 6,
+          // force a left turn and set anti-clockwise before replanning.
+          if (obstacleBlockedNextNode == 1 && (currentNode == 5 || currentNode == 6)) {
+            Serial.println("Forced LEFT at node 5/6 after obstacle while heading to node 1");
+            turn90Left();
+            catchLineAfterTurn(-1);
+            clockwise = false;  // force anti-clockwise
+          }
+
+          // Clear remembered attempted node after applying special case
+          obstacleBlockedNextNode = -1;
+
+          // Now replan from the node and EXECUTE the first move
+          replanFromCurrentToGoal(true, false);
+          return;
+        }
+
+        return;  // do not run normal obstacle check while returning
+      }
+
+
+      // ================= NORMAL MODE =================
+
+      if (ENABLE_OBSTACLE_DETECTION && parkingStage == PARK_NONE && navigating && millis() - lastObstacleCheckMs >= OBSTACLE_CHECK_MS && millis() >= obstacleIgnoreUntilMs && !obstacleSuppressDuringReturn) {
 
         lastObstacleCheckMs = millis();
 
         if (obstacleDetectedNow()) {
+          Serial.println("*** OBSTACLE DETECTED (BETWEEN NODES) - TURN180 -> RETURN TO LAST NODE -> REPLAN ***");
 
-  Serial.println("*** OBSTACLE DETECTED - STOP + BLACKLIST EDGE + REROUTE ***");
+          motorStop();
+          delay(120);
 
-  // 1️⃣ Immediate stop
-  motorStop();
-  delay(120);
+          // Blacklist the segment we are on: currentNode -> expectedNextNode
+          if (currentNode >= 0 && expectedNextNode >= 0 && expectedNextNode < NUM_NODES) {
+            Serial.print("Blocking edge: ");
+            Serial.print(currentNode);
+            Serial.print(" <-> ");
+            Serial.println(expectedNextNode);
+            blockEdgeBothWays(currentNode, expectedNextNode);
+          } else {
+            Serial.println("Warning: couldn't infer edge to block (invalid currentNode/expectedNextNode).");
+          }
+          obstacleBlockedNextNode = expectedNextNode;
 
-  // 2️⃣ Back up slightly to clear obstacle and re-center on line
-  digitalWrite(MOTOR1_PHASE, LOW);
-  digitalWrite(MOTOR2_PHASE, LOW);
-  analogWrite(MOTOR1_PWM, 160);
-  analogWrite(MOTOR2_PWM, 160);
-  delay(150);
+          // Turn around physically...
+          turn180();
 
-  motorStop();
-  delay(50);
+          // ...and update logical direction NOW (NOT in turn180())
+          clockwise = !clockwise;
 
-  // 3️⃣ Now block the edge
-  if (currentNode >= 0 && expectedNextNode >= 0 && expectedNextNode < NUM_NODES) {
-    Serial.print("Blocking edge: ");
-    Serial.print(currentNode);
-    Serial.print(" <-> ");
-    Serial.println(expectedNextNode);
-    blockEdgeBothWays(currentNode, expectedNextNode);
-  }
+          // Reset obstacle latch + cooldown
+          obstacleHitCount = 0;
+          obstacleDetected = false;
+          obstacleIgnoreUntilMs = millis() + 800;
 
-  navigating = false;
-  pathComputed = false;
+          // Enter return-to-node mode
+          obstacleReturnActive = true;
+          obstacleReturnNode = currentNode;
+          obstacleSuppressDuringReturn = true;  // don't process obstacle while returning
 
-  nodeArmed = false;
-  lastNodeTime = millis();
+          // Invalidate current plan; we will replan at the node
+          pathComputed = false;
+          // keep navigating=true so lineFollowing runs
 
-  // 4️⃣ Replan WITHOUT executing first move
-  if (currentGoal >= 0 && currentGoal < NUM_NODES &&
-      currentNode >= 0 && currentNode < NUM_NODES) {
+          // Prevent node arrival logic from firing immediately
+          nodeArmed = false;
+          lastNodeTime = millis();
 
-    replanFromCurrentToGoal(false);
+          // Important: expectedNextNode no longer meaningful while returning
+          expectedNextNode = -1;
 
-  } else {
-    expectedNextNode = -1;
-  }
-
-  return;
-}
-
+          return;
+        }
       }
 
+      // Normal navigation
       lineFollowing(false);
       if (nodeArmed && nodeStableNow) handleNodeArrival();
 
     } else {
       motorStop();
     }
-  }
 
-  // Ask server only when stopped at goal and not parking
-  if (!startingUp && !navigating && reachedGoalFlag && (parkingStage == PARK_NONE)) {
-    reachedGoalFlag = false;
 
-    String resp = apiPostArrived(currentNode);
-    if (resp.length() == 0 || isFinishedMessage(resp)) {
-      finishedAll = true;
-      motorStop();
-    } else {
-      int nextNode = resp.toInt();
-      if (nextNode == CMD_START_PARK) {
-        startParkingSequence();
+
+    // Ask server only when stopped at goal and not parking
+    if (!startingUp && !navigating && reachedGoalFlag && (parkingStage == PARK_NONE)) {
+      reachedGoalFlag = false;
+
+      String resp = apiPostArrived(currentNode);
+      if (resp.length() == 0 || isFinishedMessage(resp)) {
+        finishedAll = true;
+        motorStop();
       } else {
-        currentGoal = nextNode;
-        navigateToTarget(currentGoal);
+        int nextNode = resp.toInt();
+        if (nextNode == CMD_START_PARK) {
+          startParkingSequence();
+        } else {
+          currentGoal = nextNode;
+          navigateToTarget(currentGoal);
+        }
       }
     }
-  }
 
-  static uint32_t lastPrint = 0;
-  if (now - lastPrint >= STATUS_PRINT_MS) {
-    printCurrentStatus();
-    lastPrint = now;
+    static uint32_t lastPrint = 0;
+    if (now - lastPrint >= STATUS_PRINT_MS) {
+      printCurrentStatus();
+      lastPrint = now;
+    }
   }
 }
 
@@ -625,8 +689,8 @@ void handleNodeArrival() {
     if (prevNode == 1 && (currentNode == 5 || currentNode == 6) && currentNode != currentGoal) {
       delay(40);
       turn90Left();
-      clockwise = false; // force anti-clockwise
-      replanFromCurrentToGoal(true);
+      clockwise = false;  // force anti-clockwise
+      replanFromCurrentToGoal(true, false);
 
       nodeArmed = false;
       lastNodeTime = millis();
@@ -645,7 +709,7 @@ void handleNodeArrival() {
     // Parking leg 1 complete: reached node 1 -> go to node 6
     if (parkingStage == PARK_GOTO_NODE1 && currentGoal == PARK_START_NODE) {
       parkingStage = PARK_GOTO_NODE6;
-      currentGoal  = PARK_INTERMEDIATE_NODE;   // 6
+      currentGoal = PARK_INTERMEDIATE_NODE;  // 6
       navigateToTarget(currentGoal);
 
       nodeArmed = false;
@@ -659,7 +723,7 @@ void handleNodeArrival() {
       delay(80);
 
       parkingStage = PARK_DRIVE_STRAIGHT_TO_WALL;
-      resetUltrasonicState();   // ultrasonic remains enabled
+      resetUltrasonicState();  // ultrasonic remains enabled
       return;
     }
 
@@ -675,7 +739,7 @@ void handleNodeArrival() {
   }
 
   int from = path[pathStep];
-  int to   = path[pathStep + 1];
+  int to = path[pathStep + 1];
   int movement = movementForEdge(from, to);
 
   pathStep++;
@@ -700,7 +764,7 @@ void startParkingSequence() {
     delay(120);  // small settle so we don't launch while sitting on the node
 
     parkingStage = PARK_GOTO_NODE6;
-    currentGoal  = PARK_INTERMEDIATE_NODE;   // 6
+    currentGoal = PARK_INTERMEDIATE_NODE;  // 6
     navigateToTarget(currentGoal);
 
     nodeArmed = false;
@@ -710,7 +774,7 @@ void startParkingSequence() {
 
   // Normal parking flow: go to node 1 first
   parkingStage = PARK_GOTO_NODE1;
-  currentGoal  = PARK_START_NODE;            // 1
+  currentGoal = PARK_START_NODE;  // 1
   navigateToTarget(currentGoal);
 
   nodeArmed = false;
@@ -723,77 +787,87 @@ void parkingTick() {
 
   switch (parkingStage) {
     case PARK_GOTO_NODE1:
-    case PARK_GOTO_NODE6: {
-      if (navigating) {
-        lineFollowing(false);
-        if (nodeArmed && nodeStableNow) handleNodeArrival();
+    case PARK_GOTO_NODE6:
+      {
+        if (navigating) {
+          lineFollowing(false);
+          if (nodeArmed && nodeStableNow) handleNodeArrival();
+        }
       }
-    } break;
+      break;
 
-    case PARK_DRIVE_STRAIGHT_TO_WALL: {
-      // No line following here—just straight drive until wall is confirmed
-      if (isWallTooClose()) {
-        Serial.println("*** WALL DETECTED - PARKING COMPLETE (report node 5) ***");
-        motorStop();
-        parkingStage = PARK_STOPPED;
-        reachedGoalFlag = false;
+    case PARK_DRIVE_STRAIGHT_TO_WALL:
+      {
+        // No line following here—just straight drive until wall is confirmed
+        if (isWallTooClose()) {
+          Serial.println("*** WALL DETECTED - PARKING COMPLETE (report node 5) ***");
+          motorStop();
+          parkingStage = PARK_STOPPED;
+          reachedGoalFlag = false;
 
-        if (!parkingWallReported) {
-          parkingWallReported = true;
-          String resp = apiPostArrived(PARK_WALL_HIT_NODE);
-          (void)resp;
+          if (!parkingWallReported) {
+            parkingWallReported = true;
+            String resp = apiPostArrived(PARK_WALL_HIT_NODE);
+            (void)resp;
+          }
+
+          disableUltrasonic();  // parking complete
+          break;
         }
 
-        disableUltrasonic(); // parking complete
-        break;
+        DriveStraightTrim(PARK_BASE_SPEED);
+        lastCorrection = 0.0f;
       }
+      break;
 
-      DriveStraightTrim(PARK_BASE_SPEED);
-      lastCorrection = 0.0f;
-    } break;
-
-    case PARK_STRAIGHT_ON_LINE: {
-      lineFollowing(true);
-      if (now - parkStraightStartMs >= PARK_TO_STRAIGHT_MS) {
-        parkingStage = PARK_UNTIL_LINE_LOST;
-        lineLostSinceMs = 0;
-      }
-    } break;
-
-    case PARK_UNTIL_LINE_LOST: {
-      lineFollowing(true);
-
-      if (!isLinePresent()) {
-        if (lineLostSinceMs == 0) lineLostSinceMs = now;
-        if (now - lineLostSinceMs >= PARK_LINE_LOST_MS) {
-          parkingStage = PARK_BEND_AWAY_IF_LINE_REAPPEARS;
-          resetUltrasonicState();
+    case PARK_STRAIGHT_ON_LINE:
+      {
+        lineFollowing(true);
+        if (now - parkStraightStartMs >= PARK_TO_STRAIGHT_MS) {
+          parkingStage = PARK_UNTIL_LINE_LOST;
+          lineLostSinceMs = 0;
         }
-      } else {
-        lineLostSinceMs = 0;
       }
-    } break;
+      break;
 
-    case PARK_BEND_AWAY_IF_LINE_REAPPEARS: {
-      if (isWallTooClose()) {
-        Serial.println("*** WALL DETECTED - PARKING COMPLETE (report node 5) ***");
-        motorStop();
-        parkingStage = PARK_STOPPED;
-        reachedGoalFlag = false;
+    case PARK_UNTIL_LINE_LOST:
+      {
+        lineFollowing(true);
 
-        if (!parkingWallReported) {
-          parkingWallReported = true;
-          String resp = apiPostArrived(PARK_WALL_HIT_NODE);
-          (void)resp;
+        if (!isLinePresent()) {
+          if (lineLostSinceMs == 0) lineLostSinceMs = now;
+          if (now - lineLostSinceMs >= PARK_LINE_LOST_MS) {
+            parkingStage = PARK_BEND_AWAY_IF_LINE_REAPPEARS;
+            resetUltrasonicState();
+          }
+        } else {
+          lineLostSinceMs = 0;
+        }
+      }
+      break;
+
+    case PARK_BEND_AWAY_IF_LINE_REAPPEARS:
+      {
+        if (isWallTooClose()) {
+          Serial.println("*** WALL DETECTED - PARKING COMPLETE (report node 5) ***");
+          motorStop();
+          parkingStage = PARK_STOPPED;
+          reachedGoalFlag = false;
+
+          if (!parkingWallReported) {
+            parkingWallReported = true;
+            String resp = apiPostArrived(PARK_WALL_HIT_NODE);
+            (void)resp;
+          }
+
+          disableUltrasonic();
+          break;
         }
 
-        disableUltrasonic();
-        break;
+        DriveStraightTrim(PARK_BASE_SPEED);
+        lastCorrection = 0.0f;
       }
-
-      DriveStraightTrim(PARK_BASE_SPEED);
-      lastCorrection = 0.0f;
-    } break;
+      break;
 
     default: break;
   }
@@ -843,7 +917,7 @@ float ultrasonicMeasureOnceCm() {
   float distance_cm = (duration * SOUND_SPEED_CM_PER_US) / 2.0f;
 
   if (distance_cm < US_HARD_MIN_CM) distance_cm = US_HARD_MIN_CM;
-  if (distance_cm > US_TIMEOUT_CM)  distance_cm = US_TIMEOUT_CM;
+  if (distance_cm > US_TIMEOUT_CM) distance_cm = US_TIMEOUT_CM;
 
   return distance_cm;
 }
@@ -878,12 +952,18 @@ float ultrasonicFilteredCm(bool forceSample) {
       }
 
       uint8_t startIdx = US_DISCARD;
-      uint8_t endIdx   = validSamples - US_DISCARD;
-      if (startIdx >= endIdx) { startIdx = 0; endIdx = validSamples; }
+      uint8_t endIdx = validSamples - US_DISCARD;
+      if (startIdx >= endIdx) {
+        startIdx = 0;
+        endIdx = validSamples;
+      }
 
       float sum = 0;
       uint8_t cnt = 0;
-      for (uint8_t i = startIdx; i < endIdx; i++) { sum += samples[i]; cnt++; }
+      for (uint8_t i = startIdx; i < endIdx; i++) {
+        sum += samples[i];
+        cnt++;
+      }
 
       float trimmedMean = (cnt > 0) ? (sum / cnt) : 0.0f;
 
@@ -944,16 +1024,39 @@ inline void applyMatrixOverrideFor90TurnAtSpecialNodes() {
   else if (currentNode == 6) clockwise = true;
 }
 
-void replanFromCurrentToGoal(bool doInitialMove) {
-  if (currentNode < 0 || currentNode >= NUM_NODES) { navigating=false; pathComputed=false; expectedNextNode=-1; motorStop(); return; }
-  if (currentGoal < 0 || currentGoal >= NUM_NODES) { navigating=false; pathComputed=false; expectedNextNode=-1; motorStop(); return; }
+void replanFromCurrentToGoal(bool doInitialMove, bool flipDirection) {
+  // If we physically turned 180 elsewhere (or will), sync logical direction here
+  if (flipDirection) {
+    clockwise = !clockwise;
+  }
 
-  if (!dijkstraPathfinding(currentNode, currentGoal)) { navigating=false; pathComputed=false; expectedNextNode=-1; motorStop(); return; }
+  if (currentNode < 0 || currentNode >= NUM_NODES) {
+    navigating = false;
+    pathComputed = false;
+    expectedNextNode = -1;
+    motorStop();
+    return;
+  }
+  if (currentGoal < 0 || currentGoal >= NUM_NODES) {
+    navigating = false;
+    pathComputed = false;
+    expectedNextNode = -1;
+    motorStop();
+    return;
+  }
+
+  if (!dijkstraPathfinding(currentNode, currentGoal)) {
+    navigating = false;
+    pathComputed = false;
+    expectedNextNode = -1;
+    motorStop();
+    return;
+  }
 
   pathComputed = true;
   navigating = true;
 
-  // IMPORTANT: after replan, the "next node to reach" is path[1]
+  // After a replan, we want to drive toward the next node in the path
   if (pathLength > 1) {
     pathStep = 1;
     expectedNextNode = path[1];
@@ -962,6 +1065,7 @@ void replanFromCurrentToGoal(bool doInitialMove) {
     expectedNextNode = -1;
   }
 
+  // Only execute a scripted node-leave if we're truly sitting on a node
   if (doInitialMove && pathLength > 1 && currentNode == path[0]) {
     int firstMove = movementForEdge(path[0], path[1]);
     executeMovement(firstMove, path[1]);
@@ -971,9 +1075,10 @@ void replanFromCurrentToGoal(bool doInitialMove) {
 }
 
 
+
 /* ===================== PATHFINDING ===================== */
 int movementForEdge(int from, int to) {
-  int mCw  = clockwiseMatrix[from][to];
+  int mCw = clockwiseMatrix[from][to];
   int mAcw = antiClockwiseMatrix[from][to];
 
   // Prefer current orientation if valid
@@ -981,10 +1086,16 @@ int movementForEdge(int from, int to) {
   if (!clockwise && mAcw != 0) return mAcw;
 
   // Otherwise switch to whichever matrix supports this edge
-  if (mCw != 0)  { clockwise = true;  return mCw; }
-  if (mAcw != 0) { clockwise = false; return mAcw; }
+  if (mCw != 0) {
+    clockwise = true;
+    return mCw;
+  }
+  if (mAcw != 0) {
+    clockwise = false;
+    return mAcw;
+  }
 
-  return 0; // truly no edge
+  return 0;  // truly no edge
 }
 
 
@@ -1008,7 +1119,10 @@ bool dijkstraPathfinding(int startIdx, int endIdx) {
     int u = -1;
 
     for (int v = 0; v < NUM_NODES; v++) {
-      if (!visited[v] && dist[v] < minDist) { minDist = dist[v]; u = v; }
+      if (!visited[v] && dist[v] < minDist) {
+        minDist = dist[v];
+        u = v;
+      }
     }
     if (u == -1 || u == endIdx) break;
     visited[u] = true;
@@ -1018,7 +1132,10 @@ bool dijkstraPathfinding(int startIdx, int endIdx) {
       if (edgeExists && !isEdgeBlocked(u, v)) {
 
         int newDist = dist[u] + edgeCost(u, v, endIdx);
-        if (newDist < dist[v]) { dist[v] = newDist; prev[v] = u; }
+        if (newDist < dist[v]) {
+          dist[v] = newDist;
+          prev[v] = u;
+        }
       }
     }
   }
@@ -1026,7 +1143,10 @@ bool dijkstraPathfinding(int startIdx, int endIdx) {
   if (dist[endIdx] == 999999) return false;
 
   int cur = endIdx;
-  while (cur != -1) { path[pathLength++] = cur; cur = prev[cur]; }
+  while (cur != -1) {
+    path[pathLength++] = cur;
+    cur = prev[cur];
+  }
 
   for (int i = 0; i < pathLength / 2; i++) {
     int t = path[i];
@@ -1038,8 +1158,20 @@ bool dijkstraPathfinding(int startIdx, int endIdx) {
 
 void navigateToTarget(int targetNode) {
   if (!ultrasonicEnabled) enableUltrasonic();
-  if (currentNode < 0 || currentNode >= NUM_NODES) { navigating = false; pathComputed = false; expectedNextNode = -1; motorStop(); return; }
-  if (!dijkstraPathfinding(currentNode, targetNode)) { navigating = false; pathComputed = false; expectedNextNode = -1; motorStop(); return; }
+  if (currentNode < 0 || currentNode >= NUM_NODES) {
+    navigating = false;
+    pathComputed = false;
+    expectedNextNode = -1;
+    motorStop();
+    return;
+  }
+  if (!dijkstraPathfinding(currentNode, targetNode)) {
+    navigating = false;
+    pathComputed = false;
+    expectedNextNode = -1;
+    motorStop();
+    return;
+  }
 
   pathComputed = true;
   navigating = true;
@@ -1062,17 +1194,23 @@ void ReadSensorsFast() {
 
 uint8_t countLowSensors() {
   uint8_t low = 0;
-  for (int i = 0; i < NUM_SENSORS; i++) if (analogValue[i] < LINE_THRESHOLD) low++;
+  for (int i = 0; i < NUM_SENSORS; i++)
+    if (analogValue[i] < LINE_THRESHOLD) low++;
   return low;
 }
 
-bool isLinePresent() { return (countLowSensors() >= 1); }
+bool isLinePresent() {
+  return (countLowSensors() >= 1);
+}
 
 int lineMinIndex() {
   int minIndex = 0;
   int minValue = analogValue[0];
   for (int i = 1; i < NUM_SENSORS; i++) {
-    if (analogValue[i] < minValue) { minValue = analogValue[i]; minIndex = i; }
+    if (analogValue[i] < minValue) {
+      minValue = analogValue[i];
+      minIndex = i;
+    }
   }
   return minIndex;
 }
@@ -1091,20 +1229,19 @@ bool isNodeNowFast() {
 
   // Normal node rule (all other nodes)
   if (!approaching6) {
-    return (lowCnt >= NODE_TRIP_LOWCOUNT_STRONG); // 4
+    return (lowCnt >= NODE_TRIP_LOWCOUNT_STRONG);  // 4
   }
 
   // --- Node 6 special rule: 3 consecutive lows from an edge ---
-  const bool leftEdgeTriple  = low[0] && low[1] && low[2];
+  const bool leftEdgeTriple = low[0] && low[1] && low[2];
   const bool rightEdgeTriple = low[2] && low[3] && low[4];
 
   // --- Extra sensitive only during parking leg node1->node6 ---
   if (node6ExtraSensitiveActive()) {
     // 2 consecutive from an edge (more sensitive)
     if (node6ExtraSensitiveActive()) {
-  return (lowCnt >= 2);
-}
-
+      return (lowCnt >= 2);
+    }
   }
 
   // Normal (non-parking) approach to node 6
@@ -1119,9 +1256,9 @@ void updateNodeDetector() {
 
   uint32_t debounce = NODE_DEBOUNCE_MS;
 
-if (expectedNextNode == 6) {
-  debounce = node6ExtraSensitiveActive() ? NODE6_DEBOUNCE_MS_PARK : NODE6_DEBOUNCE_MS_NORMAL;
-}
+  if (expectedNextNode == 6) {
+    debounce = node6ExtraSensitiveActive() ? NODE6_DEBOUNCE_MS_PARK : NODE6_DEBOUNCE_MS_NORMAL;
+  }
 
 
   if (!nodeArmed) {
@@ -1143,10 +1280,10 @@ if (expectedNextNode == 6) {
 void SetMotors(int leftSpeed, int rightSpeed) {
   rightSpeed += MOTOR2_OFFSET_PWM;
 
-  leftSpeed  = (int)((float)leftSpeed  * LEFT_MOTOR_GAIN);
+  leftSpeed = (int)((float)leftSpeed * LEFT_MOTOR_GAIN);
   rightSpeed = (int)((float)rightSpeed * RIGHT_MOTOR_GAIN);
 
-  leftSpeed  = constrain(leftSpeed, MIN_SPEED, MAX_SPEED);
+  leftSpeed = constrain(leftSpeed, MIN_SPEED, MAX_SPEED);
   rightSpeed = constrain(rightSpeed, MIN_SPEED, MAX_SPEED);
 
   analogWrite(MOTOR1_PWM, leftSpeed);
@@ -1164,7 +1301,7 @@ void motorStop() {
 // Parking-only: drive straight using your proven TRIM logic.
 // This does NOT use MOTOR2_OFFSET_PWM or LEFT/RIGHT gains.
 static inline void DriveStraightTrim(int speed) {
-  int leftSpeed  = constrain(speed, MIN_SPEED, MAX_SPEED);
+  int leftSpeed = constrain(speed, MIN_SPEED, MAX_SPEED);
   int rightSpeed = constrain(speed + PARK_TRIM, MIN_SPEED, MAX_SPEED);
 
   digitalWrite(MOTOR1_PHASE, HIGH);
@@ -1248,9 +1385,7 @@ void catchLineAfterTurn(int biasDir) {
   while (millis() - start < CATCHLINE_TIMEOUT_MS) {
     ReadSensorsFast();
 
-    bool centerOk = (analogValue[2] < LINE_THRESHOLD) ||
-                    (analogValue[1] < LINE_THRESHOLD) ||
-                    (analogValue[3] < LINE_THRESHOLD);
+    bool centerOk = (analogValue[2] < LINE_THRESHOLD) || (analogValue[1] < LINE_THRESHOLD) || (analogValue[3] < LINE_THRESHOLD);
 
     if (centerOk) {
       motorStop();
@@ -1258,7 +1393,7 @@ void catchLineAfterTurn(int biasDir) {
       return;
     }
 
-    int left  = CATCHLINE_SPEED - biasDir * CATCHLINE_SPIN_DELTA;
+    int left = CATCHLINE_SPEED - biasDir * CATCHLINE_SPIN_DELTA;
     int right = CATCHLINE_SPEED + biasDir * CATCHLINE_SPIN_DELTA;
     SetMotors(left, right);
     delay(10);
@@ -1286,29 +1421,29 @@ void executeMovement(int movementType, int nextNode) {
       delay(MOVE_PAUSE_MS);
       break;
 
-    case -1: {
-  const bool parkingNode1To6 =
-      (parkingStage == PARK_GOTO_NODE6) &&
-      (currentNode == PARK_START_NODE) &&
-      (nextNode == PARK_INTERMEDIATE_NODE);
+    case -1:
+      {
+        const bool parkingNode1To6 =
+          (parkingStage == PARK_GOTO_NODE6) && (currentNode == PARK_START_NODE) && (nextNode == PARK_INTERMEDIATE_NODE);
 
-  if (parkingNode1To6) {
-    turn180ThenBackoff();
-  } else {
-    turn180();
-  }
+        if (parkingNode1To6) {
+          turn180ThenBackoff();
+        } else {
+          turn180();
+        }
 
-  clockwise = !clockwise;
+        clockwise = !clockwise;
 
-  // Exit node forward as usual so lineFollowing can take over cleanly
-  digitalWrite(MOTOR1_PHASE, HIGH);
-  digitalWrite(MOTOR2_PHASE, HIGH);
-  analogWrite(MOTOR1_PWM, BASE_SPEED);
-  analogWrite(MOTOR2_PWM, BASE_SPEED);
-  delay(MOVE_EXIT_NODE_MS);
-  motorStop();
-  delay(MOVE_PAUSE_MS);
-} break;
+        // Exit node forward as usual so lineFollowing can take over cleanly
+        digitalWrite(MOTOR1_PHASE, HIGH);
+        digitalWrite(MOTOR2_PHASE, HIGH);
+        analogWrite(MOTOR1_PWM, BASE_SPEED);
+        analogWrite(MOTOR2_PWM, BASE_SPEED);
+        delay(MOVE_EXIT_NODE_MS);
+        motorStop();
+        delay(MOVE_PAUSE_MS);
+      }
+      break;
 
 
     case 2:
@@ -1348,11 +1483,11 @@ void executeMovement(int movementType, int nextNode) {
 }
 
 /* ===================== LINE FOLLOWING ===================== */
-static const int8_t SENSOR_WEIGHT[NUM_SENSORS] = {-2, -1, 0, 1, 2};
+static const int8_t SENSOR_WEIGHT[NUM_SENSORS] = { -2, -1, 0, 1, 2 };
 
-bool computeLineError(float &errorOut) {
+bool computeLineError(float& errorOut) {
   long weightedSum = 0;
-  int  seenCount   = 0;
+  int seenCount = 0;
 
   for (int i = 0; i < NUM_SENSORS; i++) {
     if (analogValue[i] < LINE_THRESHOLD) {
@@ -1373,10 +1508,10 @@ void lineFollowing(bool straightBias) {
   if (!lineOk) {
     int dir = (lastError < 0) ? -1 : 1;
 
-    int leftSpeed  = BASE_SPEED - dir * 140;
+    int leftSpeed = BASE_SPEED - dir * 140;
     int rightSpeed = BASE_SPEED + dir * 140;
 
-    leftSpeed  = constrain(leftSpeed,  MIN_SPEED, MAX_SPEED);
+    leftSpeed = constrain(leftSpeed, MIN_SPEED, MAX_SPEED);
     rightSpeed = constrain(rightSpeed, MIN_SPEED, MAX_SPEED);
 
     SetMotors(leftSpeed, rightSpeed);
@@ -1394,10 +1529,10 @@ void lineFollowing(bool straightBias) {
   correction = constrain(correction, -MAX_CORRECTION, MAX_CORRECTION);
   lastCorrection = correction;
 
-  int leftSpeed  = (int)((float)BASE_SPEED - correction);
+  int leftSpeed = (int)((float)BASE_SPEED - correction);
   int rightSpeed = (int)((float)BASE_SPEED + correction);
 
-  leftSpeed  = constrain(leftSpeed,  MIN_SPEED, MAX_SPEED);
+  leftSpeed = constrain(leftSpeed, MIN_SPEED, MAX_SPEED);
   rightSpeed = constrain(rightSpeed, MIN_SPEED, MAX_SPEED);
 
   SetMotors(leftSpeed, rightSpeed);
@@ -1406,21 +1541,32 @@ void lineFollowing(bool straightBias) {
 /* ===================== STATUS ===================== */
 void printCurrentStatus() {
   Serial.println("\n=== STATUS ===");
-  Serial.print("node="); Serial.print(currentNode);
-  Serial.print(" goal="); Serial.print(currentGoal);
-  Serial.print(" expNext="); Serial.print(expectedNextNode);
-  Serial.print(" parkingStage="); Serial.println((int)parkingStage);
-  Serial.print(" ultrasonicEnabled="); Serial.println(ultrasonicEnabled ? "YES" : "NO");
+  Serial.print("node=");
+  Serial.print(currentNode);
+  Serial.print(" goal=");
+  Serial.print(currentGoal);
+  Serial.print(" expNext=");
+  Serial.print(expectedNextNode);
+  Serial.print(" parkingStage=");
+  Serial.println((int)parkingStage);
+  Serial.print(" ultrasonicEnabled=");
+  Serial.println(ultrasonicEnabled ? "YES" : "NO");
 
-  Serial.print("minIdx="); Serial.print(lineMinIndex());
-  Serial.print(" lowCnt="); Serial.print((int)countLowSensors());
-  Serial.print(" corr="); Serial.println(lastCorrection, 1);
+  Serial.print("minIdx=");
+  Serial.print(lineMinIndex());
+  Serial.print(" lowCnt=");
+  Serial.print((int)countLowSensors());
+  Serial.print(" corr=");
+  Serial.println(lastCorrection, 1);
 
   if (ultrasonicEnabled) {
-    Serial.print("US_cm="); Serial.print(usEma, 2);
-    Serial.print(" hit="); Serial.print(wallHitCount);
-    Serial.print(" inv="); Serial.print(wallInvalidStreak);
-    Serial.print(" conf="); Serial.println(wallConfirmed ? "Y" : "N");
+    Serial.print("US_cm=");
+    Serial.print(usEma, 2);
+    Serial.print(" hit=");
+    Serial.print(wallHitCount);
+    Serial.print(" inv=");
+    Serial.print(wallInvalidStreak);
+    Serial.print(" conf=");
+    Serial.println(wallConfirmed ? "Y" : "N");
   }
 }
-
